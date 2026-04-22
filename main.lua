@@ -133,6 +133,20 @@ function DocSettings.getSidecarFilename(doc_path)
     return _orig_getSidecarFilename(doc_path)
 end
 
+-- Kepub paths have no extension, so getSidecarDir's greedy dot-strip pattern ((.*)%.)
+-- matches the dot in ".kobo" and returns /mnt/onboard/.sdr — the same dir for every kepub.
+-- This breaks any plugin (e.g. xray) that writes a fixed filename into getSidecarDir(),
+-- because all books share that directory and overwrite each other's files.
+-- Fix: append ".epub" before delegating to the original so the pattern strips ".epub" and
+-- lands on the correct per-book path. All location modes (doc/dir/hash) then work normally.
+local _orig_getSidecarDir = DocSettings.getSidecarDir
+function DocSettings:getSidecarDir(doc_path, force_location)
+    if is_kobo_kepub(doc_path) then
+        return _orig_getSidecarDir(self, doc_path .. ".epub", force_location)
+    end
+    return _orig_getSidecarDir(self, doc_path, force_location)
+end
+
 -- Guard against nil cover dimensions in BookInfoManager to prevent a crash
 -- when kepubs haven't had their covers cached yet.
 do
